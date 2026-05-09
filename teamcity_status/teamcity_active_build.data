@@ -1,0 +1,71 @@
+info:
+  docString: true
+
+label: TeamCity Active Builds by Type
+
+description: |
+  Bar chart showing active builds count grouped by Build Type (CI/CD).
+  Total ~3755 configurations.
+
+data:
+  local:
+    source: /teamcity/active-builds-by-type
+
+views:
+  - type: Chart
+    settings:
+      height: 400px
+      type: bar
+      x: Build Type
+      y: Count
+      tooltip:
+        trigger: axis
+        axisPointer:
+          type: shadow
+
+echarts:
+  settings:
+    title:
+      text: "Active TeamCity Builds by Type"
+      textStyle:
+        fontSize: 16
+        fontWeight: bold
+
+    grid:
+      left: 60
+      right: 40
+      top: 60
+      bottom: 40
+
+    legend:
+      show: false
+
+    xAxis:
+      type: category
+      axisLabel:
+        fontSize: 12
+        fontWeight: bold
+      name: Build Type
+      nameTextStyle:
+        fontSize: 12
+
+    yAxis:
+      type: value
+      axisLabel:
+        fontSize: 11
+      name: Number of Active Builds
+      nameTextStyle:
+        fontSize: 12
+
+    color:
+      - "#3498db"
+
+    series:
+      - type: bar
+        itemStyle:
+          color: "#3498db"
+        emphasis:
+          focus: series
+          shadowBlur: 10
+          shadowOffsetX: 0
+          shadowColor: "rgba(0, 0, 0, 0.5)"
