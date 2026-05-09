@@ -9,7 +9,7 @@ description: |
 
 data:
   local:
-    source: /teamcity/active-builds-by-type
+    source: /teamcity_inventory_report/get_teamcity_active_builds_by_type
 
 views:
   - type: Chart

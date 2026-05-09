@@ -1,13 +1,15 @@
 namespace: teamcity_inventory_dbd
+
 endpoints:
 
-  - path: /teamcity/active-builds-by-type
+  - path: /teamcity_inventory_report/get_teamcity_inventory_data
     method: get
-    function: get_teamcity_active_builds_by_type
-    description: "Get active TeamCity builds count grouped by Build Type (CI/CD)"
-    parameters:
-      - name: build_type
-        type: string
-        description: "Filter by build type (CI or CD)"
-        required: false
-    response_format: json 
+    function: /apis:teamcity_inventory_reports_apis.get_teamcity_inventory_data
+
+  - path: /teamcity_inventory_report/get_teamcity_inventory_sunburst_data
+    method: get
+    function: /apis:teamcity_inventory_reports_apis.get_teamcity_inventory_sunburst_data
+
+  - path: /teamcity_inventory_report/get_teamcity_active_builds_by_type
+    method: get
+    function: /apis:teamcity_inventory_reports_apis.get_teamcity_active_builds_by_type
