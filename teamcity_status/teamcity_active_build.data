@@ -5,33 +5,24 @@ label: TeamCity Active Builds by Tribe
 
 data:
   local:
-    source: /teamcity_inventory_report/get_teamcity_active_builds_by_type
+    source: /teamcity_inventory_dbd/teamcity_inventory_report/get_teamcity_active_builds_by_type
 
 views:
   - type: Chart
     library: echarts
+    settings:
+      type: bar
+      stacked: true
+      height: 500px
 
-settings:
-  type: bar
-  stacked: true
-  height: 500px
+      x: Tribe
 
-  x: Tribe
-
-  y:
-    - CI
-    - CD
+      y:
+        - CI
+        - CD
 
 echarts:
   settings:
-    title:
-      text: "Active TeamCity Builds by Tribe"
-
-    xAxis:
-      axisLabel:
-        rotate: 45
-        interval: 0
-
     color:
       - "#3498db"
       - "#e74c3c"
