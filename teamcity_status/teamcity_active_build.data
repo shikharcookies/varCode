@@ -3,83 +3,35 @@ info:
 
 label: TeamCity Active Builds by Tribe
 
-description: |
-  Stacked bar chart showing active builds per Tribe.
-  Each tribe bar is divided between CI and CD builds.
-  Total ~3755 configurations.
-
 data:
   local:
     source: /teamcity_inventory_report/get_teamcity_active_builds_by_type
 
 views:
   - type: Chart
-    settings:
-      height: 500px
-      type: bar
-      x: Tribe
-      y: Count
-      series: Build Type
-      barmode: stack
-      tooltip:
-        trigger: axis
-        axisPointer:
-          type: shadow
+    library: echarts
+
+settings:
+  type: bar
+  stacked: true
+  height: 500px
+
+  x: Tribe
+
+  y:
+    - CI
+    - CD
 
 echarts:
   settings:
     title:
       text: "Active TeamCity Builds by Tribe"
-      subtext: "Stacked by Build Type (CI/CD)"
-      textStyle:
-        fontSize: 16
-        fontWeight: bold
-      subtextStyle:
-        fontSize: 12
-
-    grid:
-      left: 80
-      right: 40
-      top: 80
-      bottom: 100
-
-    legend:
-      orient: horizontal
-      top: 40
-      textStyle:
-        fontSize: 12
-      data:
-        - CI
-        - CD
 
     xAxis:
-      type: category
       axisLabel:
-        fontSize: 11
-        fontWeight: bold
-        interval: 0
         rotate: 45
-      name: Tribe
-      nameTextStyle:
-        fontSize: 12
-
-    yAxis:
-      type: value
-      axisLabel:
-        fontSize: 11
-      name: Number of Active Builds
-      nameTextStyle:
-        fontSize: 12
+        interval: 0
 
     color:
-      - "#3498db"      # CI - Blue
-      - "#e74c3c"      # CD - Red
-
-    series:
-      - type: bar
-        stack: BuildType
-        emphasis:
-          focus: series
-          shadowBlur: 10
-          shadowOffsetX: 0
-          shadowColor: "rgba(0, 0, 0, 0.5)"
+      - "#3498db"
+      - "#e74c3c"

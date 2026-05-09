@@ -196,43 +196,66 @@ def get_teamcity_inventory_sunburst_data():
 
 
 def get_teamcity_active_builds_by_type():
-    """
-    Get active TeamCity builds grouped by Tribe, stacked by Build Type (CI/CD).
-    Each tribe bar shows CI and CD build counts.
-    
-    Returns:
-    List of dicts with Tribe, Build Type, and Count for stacked bar chart.
-    """
-    
+
     df = get_teamcity_inventory_data()
-    
+
     if df.empty:
         return []
-    
+
     build_type_order = ["CI", "CD"]
-    
-    # Clean Build Type column
-    df["Build Type"] = df["Build Type"].astype(str).str.strip()
+
+    # -------------------------
+    # CLEAN BUILD TYPE
+    # -------------------------
+    df["Build Type"] = (
+        df["Build Type"]
+        .astype(str)
+        .str.strip()
+        .str.upper()
+    )
+
     df = df[df["Build Type"].isin(build_type_order)]
-    
-    # Clean Tribe column
-    df["Tribe"] = df["Tribe"].astype(str).str.strip()
+
+    # -------------------------
+    # CLEAN TRIBE
+    # -------------------------
+    df["Tribe"] = (
+        df["Tribe"]
+        .astype(str)
+        .str.strip()
+        .str.upper()
+    )
+
     df = df[df["Tribe"] != ""]
     df = df[df["Tribe"].notna()]
-    
-    # Group by Tribe and Build Type and count
-    result = (
+
+    # -------------------------
+    # GROUP DATA
+    # -------------------------
+    grouped_df = (
         df.groupby(["Tribe", "Build Type"])
         .size()
         .reset_index(name="Count")
     )
-    
-    # Sort by tribe then by build type order
-    result["Build Type"] = pd.Categorical(
-        result["Build Type"],
-        categories=build_type_order,
-        ordered=True
+
+    # -------------------------
+    # PIVOT TABLE
+    # -------------------------
+    pivot_df = grouped_df.pivot_table(
+        index="Tribe",
+        columns="Build Type",
+        values="Count",
+        aggfunc="sum",
+        fill_value=0,
     )
-    result = result.sort_values(["Tribe", "Build Type"])
-    
-    return result.to_dict(orient="records")
+
+    # Ensure both columns exist
+    for build_type in build_type_order:
+        if build_type not in pivot_df.columns:
+            pivot_df[build_type] = 0
+
+    pivot_df = pivot_df[build_type_order]
+
+    pivot_df = pivot_df.reset_index()
+
+    return pivot_df.to_dict(orient="records")
