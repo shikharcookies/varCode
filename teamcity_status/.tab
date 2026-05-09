@@ -5,3 +5,14 @@ items:
     settings:
       row: 0
       column: 0
+
+
+parameters:
+  - name: month
+    label: Select Month
+    type: select
+    data:
+      local:
+        static:
+          - value: April
+          - value: May
