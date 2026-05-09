@@ -13,3 +13,7 @@ endpoints:
   - path: /teamcity_inventory_report/get_teamcity_active_builds_by_type
     method: get
     function: /apis:teamcity_inventory_reports_apis.get_teamcity_active_builds_by_type
+
+  - path: /teamcity_inventory_report/run_teamcity_inventory_job
+    method: post
+    function: /apis:teamcity_inventory_reports_apis.run_teamcity_inventory_job
