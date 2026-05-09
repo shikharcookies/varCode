@@ -197,13 +197,11 @@ def get_teamcity_inventory_sunburst_data():
 
 def get_teamcity_active_builds_by_type():
     """
-    Get active TeamCity builds count grouped by build type (CI/CD).
-    
-    Parameters:
-    - build_type: Filter by specific build type (CI or CD). If not provided, shows both.
+    Get active TeamCity builds grouped by Tribe, stacked by Build Type (CI/CD).
+    Each tribe bar shows CI and CD build counts.
     
     Returns:
-    List of dicts with Build Type and Count for stacked bar chart.
+    List of dicts with Tribe, Build Type, and Count for stacked bar chart.
     """
     
     df = get_teamcity_inventory_data()
@@ -217,19 +215,24 @@ def get_teamcity_active_builds_by_type():
     df["Build Type"] = df["Build Type"].astype(str).str.strip()
     df = df[df["Build Type"].isin(build_type_order)]
     
-    # Group by Build Type and count
+    # Clean Tribe column
+    df["Tribe"] = df["Tribe"].astype(str).str.strip()
+    df = df[df["Tribe"] != ""]
+    df = df[df["Tribe"].notna()]
+    
+    # Group by Tribe and Build Type and count
     result = (
-        df.groupby("Build Type")
+        df.groupby(["Tribe", "Build Type"])
         .size()
         .reset_index(name="Count")
     )
     
-    # Sort by build type order
+    # Sort by tribe then by build type order
     result["Build Type"] = pd.Categorical(
         result["Build Type"],
         categories=build_type_order,
         ordered=True
     )
-    result = result.sort_values("Build Type")
+    result = result.sort_values(["Tribe", "Build Type"])
     
     return result.to_dict(orient="records")

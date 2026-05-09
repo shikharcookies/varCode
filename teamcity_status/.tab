@@ -1,26 +1,7 @@
-label: TeamCity Active Builds by Type
+label: TeamCity Active Builds by Tribe
 items:
   - location: teamcity_active_build.data
-    label: Active Builds by Build Type
+    label: Active Builds by Tribe
     settings:
       row: 0
       column: 0
-
-parameters:
-  - name: build_type
-    label: Build Type
-    type: dropdown
-    placeholder: "Select Build Type"
-    tooltip: "Filter builds by CI (Continuous Integration) or CD (Continuous Deployment)"
-    options:
-      - value: "CI"
-        label: "CI (Continuous Integration)"
-      - value: "CD"
-        label: "CD (Continuous Deployment)"
-      - value: ""
-        label: "All Types"
-    defaultValue: ""
-    required: false
-    apiBinding:
-      - componentId: "teamcity_active_build.data"
-        parameterName: "build_type"
