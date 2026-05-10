@@ -326,9 +326,7 @@ def get_teamcity_build_trend_by_tribe():
         "May": "teamcity_inventory/TeamcityBuildInventory_07-05-2026.csv",
     }
 
-    build_type = request.args.get("build_type", "All")
-
-    all_data = []
+    all_months_data = []
 
     for month_name, file_name in months.items():
 
@@ -337,18 +335,14 @@ def get_teamcity_build_trend_by_tribe():
 
         df = s3_connector.read_csv_file(file_name)
 
+        # -------------------------
+        # CLEAN COLUMN NAMES
+        # -------------------------
         df.columns = df.columns.str.strip()
 
-        df["Build Type"] = (
-            df["Build Type"]
-            .astype(str)
-            .str.strip()
-            .str.upper()
-        )
-
-        if build_type != "All":
-            df = df[df["Build Type"] == build_type]
-
+        # -------------------------
+        # CLEAN TRIBE
+        # -------------------------
         df["Tribe"] = (
             df["Tribe"]
             .astype(str)
@@ -356,19 +350,28 @@ def get_teamcity_build_trend_by_tribe():
             .str.upper()
         )
 
+        df = df[df["Tribe"] != ""]
+        df = df[df["Tribe"].notna()]
+
+        # -------------------------
+        # GROUP BY TRIBE
+        # -------------------------
         grouped_df = (
             df.groupby("Tribe")
             .size()
             .reset_index(name="Count")
         )
 
-        grouped_df["Month"] = month_name
+        # -------------------------
+        # CONVERT TO SINGLE ROW
+        # -------------------------
+        month_data = {
+            "Month": month_name
+        }
 
-        all_data.append(grouped_df)
+        for _, row in grouped_df.iterrows():
+            month_data[row["Tribe"]] = int(row["Count"])
 
-    if not all_data:
-        return []
+        all_months_data.append(month_data)
 
-    final_df = pd.concat(all_data)
-
-    return final_df.to_dict(orient="records")
+    return all_months_data

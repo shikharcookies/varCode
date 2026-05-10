@@ -15,12 +15,21 @@ views:
     library: echarts
 
     settings:
-      height: 500px
+      height: 500
       type: line
 
       x: Month
-      y: Count
-      series: Tribe
+
+      y:
+        - CAR
+        - CFM
+        - CM
+        - DEVOPS
+        - DP
+        - MAR
+        - MM
+        - OTHERS
+        - RISKCITIZEN
 
 echarts:
   settings:
@@ -39,4 +48,4 @@ echarts:
 
     yAxis:
       type: value
-      name: Builds
+      name: Number of Builds
