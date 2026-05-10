@@ -321,44 +321,24 @@ def get_teamcity_active_builds_by_type():
 # ---------------------------------------------------
 def get_teamcity_build_trend_by_tribe():
 
-    month_files = {
+    months = {
         "April": "teamcity_inventory/TeamcityBuildInventory_28-04-2026.csv",
         "May": "teamcity_inventory/TeamcityBuildInventory_07-05-2026.csv",
     }
 
-    selected_build_type = request.args.get(
-        "build_type",
-        "All"
-    )
+    build_type = request.args.get("build_type", "All")
 
-    final_df = pd.DataFrame()
+    all_data = []
 
-    for month, file_name in month_files.items():
+    for month_name, file_name in months.items():
 
         if not s3_connector.has_file(file_name):
             continue
 
         df = s3_connector.read_csv_file(file_name)
 
-        # -----------------------------------------
-        # REMOVE UNNAMED COLUMNS
-        # -----------------------------------------
-        df = df.loc[
-            :,
-            ~df.columns.str.contains(
-                "unnamed",
-                case=False
-            )
-        ]
-
-        # -----------------------------------------
-        # CLEAN COLUMN NAMES
-        # -----------------------------------------
         df.columns = df.columns.str.strip()
 
-        # -----------------------------------------
-        # CLEAN BUILD TYPE
-        # -----------------------------------------
         df["Build Type"] = (
             df["Build Type"]
             .astype(str)
@@ -366,19 +346,9 @@ def get_teamcity_build_trend_by_tribe():
             .str.upper()
         )
 
-        # -----------------------------------------
-        # APPLY BUILD TYPE FILTER
-        # -----------------------------------------
-        if selected_build_type.upper() != "ALL":
+        if build_type != "All":
+            df = df[df["Build Type"] == build_type]
 
-            df = df[
-                df["Build Type"] ==
-                selected_build_type.upper()
-            ]
-
-        # -----------------------------------------
-        # CLEAN TRIBE
-        # -----------------------------------------
         df["Tribe"] = (
             df["Tribe"]
             .astype(str)
@@ -386,39 +356,19 @@ def get_teamcity_build_trend_by_tribe():
             .str.upper()
         )
 
-        df = df[df["Tribe"] != ""]
-        df = df[df["Tribe"].notna()]
-
-        # -----------------------------------------
-        # GROUP DATA
-        # -----------------------------------------
         grouped_df = (
             df.groupby("Tribe")
             .size()
             .reset_index(name="Count")
         )
 
-        grouped_df["Month"] = month
+        grouped_df["Month"] = month_name
 
-        final_df = pd.concat(
-            [final_df, grouped_df],
-            ignore_index=True
-        )
+        all_data.append(grouped_df)
 
-    if final_df.empty:
+    if not all_data:
         return []
 
-    # -----------------------------------------
-    # PIVOT TABLE
-    # -----------------------------------------
-    pivot_df = final_df.pivot_table(
-        index="Month",
-        columns="Tribe",
-        values="Count",
-        aggfunc="sum",
-        fill_value=0,
-    )
+    final_df = pd.concat(all_data)
 
-    pivot_df = pivot_df.reset_index()
-
-    return pivot_df.to_dict(orient="records")
+    return final_df.to_dict(orient="records")
