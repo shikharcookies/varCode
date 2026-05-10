@@ -16,3 +16,13 @@ parameters:
         static:
           - value: April
           - value: May
+
+  - name: build_type
+    label: Build Type
+    type: select
+    data:
+      local:
+        static:
+          - value: All
+          - value: CI
+          - value: CD

@@ -1,48 +1,7 @@
+from teamcity_inventory_dbd.configs.config import s3_connector
 from flask import request
 import pandas as pd
 
-from teamcity_inventory_dbd.configs.config import (
-    s3_connector,
-)
-
-# ---------------------------------------------------------
-# OPTIONAL IMPORT
-# ---------------------------------------------------------
-# This is the new monthly inventory generation job.
-#
-# It fetches fresh TeamCity inventory data,
-# generates a CSV file,
-# and uploads it to S3 automatically.
-#
-# IMPORTANT:
-# If this import causes issues during deployment,
-# simply comment/remove:
-#
-# from teamcity_inventory_dbd.data_setters.teamcity_data_setter import (
-#     generate_and_upload_inventory,
-# )
-#
-# and ALSO comment/remove:
-#
-# def run_teamcity_inventory_job():
-#     result = generate_and_upload_inventory()
-#     return result
-#
-# The remaining existing dashboards/charts/APIs
-# will continue to work normally.
-# ---------------------------------------------------------
-
-from teamcity_inventory_dbd.data_setters.teamcity_data_setter import (
-    generate_and_upload_inventory,
-)
-
-# ---------------------------------------------------------
-# FILE CONFIG
-# ---------------------------------------------------------
-
-TEAMCITY_INVENTORY_DATA_FILE_NAME = (
-    "teamcity_inventory/TeamcityBuildInventory_07-05-2026.csv"
-)
 
 DISPLAY_COLUMNS = [
     "Tribe",
@@ -60,10 +19,28 @@ DISPLAY_COLUMNS = [
     "Migration Status",
 ]
 
-# ---------------------------------------------------------
-# PARAM PARSER
-# ---------------------------------------------------------
 
+# ---------------------------------------------------
+# DYNAMIC FILE SELECTION BASED ON MONTH DROPDOWN
+# ---------------------------------------------------
+def get_inventory_file_name():
+
+    selected_month = request.args.get("month", "May")
+
+    file_mapping = {
+        "April": "teamcity_inventory/TeamcityBuildInventory_28-04-2026.csv",
+        "May": "teamcity_inventory/TeamcityBuildInventory_07-05-2026.csv",
+    }
+
+    return file_mapping.get(
+        selected_month,
+        "teamcity_inventory/TeamcityBuildInventory_07-05-2026.csv"
+    )
+
+
+# ---------------------------------------------------
+# PARAM PARSER
+# ---------------------------------------------------
 def parse_param(name):
 
     val = request.args.get(name)
@@ -71,124 +48,68 @@ def parse_param(name):
     if not val or not val.strip():
         return []
 
-    return [
-        v.strip()
-        for v in val.split(",")
-        if v.strip()
-    ]
+    return [v.strip() for v in val.split(",") if v.strip()]
 
-# ---------------------------------------------------------
-# MAIN INVENTORY DATA
-# ---------------------------------------------------------
 
+# ---------------------------------------------------
+# MAIN DATA LOADER
+# ---------------------------------------------------
 def get_teamcity_inventory_data():
 
-    if not s3_connector.has_file(
-        TEAMCITY_INVENTORY_DATA_FILE_NAME
-    ):
-        raise FileNotFoundError(
-            "The S3 file does not exist."
-        )
+    file_name = get_inventory_file_name()
 
-    df = s3_connector.read_csv_file(
-        TEAMCITY_INVENTORY_DATA_FILE_NAME
-    )
+    if not s3_connector.has_file(file_name):
+        raise FileNotFoundError("The s3 file does not exist.")
+
+    df = s3_connector.read_csv_file(file_name)
 
     # Remove unnamed columns
-    df = df.loc[
-        :,
-        ~df.columns.str.contains(
-            "unnamed",
-            case=False,
-        ),
-    ]
+    df = df.loc[:, ~df.columns.str.contains("unnamed", case=False)]
 
-    # -----------------------------------------------------
-    # URL PARAM FILTERS
-    # -----------------------------------------------------
+    # Clean column names
+    df.columns = df.columns.str.strip()
 
+    # -------------------------
+    # FILTER PARAMETERS
+    # -------------------------
     tribes = parse_param("tribe")
+    currents = parse_param("current_ecosystem")
+    targets = parse_param("target_ecosystem")
+    statuses = parse_param("migration_status")
+    build_types = parse_param("build_type")
+    sprint_number = parse_param("sprint_number")
 
-    currents = parse_param(
-        "current_ecosystem"
-    )
-
-    targets = parse_param(
-        "target_ecosystem"
-    )
-
-    statuses = parse_param(
-        "migration_status"
-    )
-
-    build_types = parse_param(
-        "build_type"
-    )
-
-    sprint_number = parse_param(
-        "sprint_number"
-    )
-
-    # -----------------------------------------------------
+    # -------------------------
     # APPLY FILTERS
-    # -----------------------------------------------------
-
+    # -------------------------
     if tribes:
-        df = df[
-            df["Tribe"].isin(tribes)
-        ]
+        df = df[df["Tribe"].isin(tribes)]
 
     if currents:
-        df = df[
-            df["Current Ecosystem"].isin(
-                currents
-            )
-        ]
+        df = df[df["Current Ecosystem"].isin(currents)]
 
     if targets:
-        df = df[
-            df["Target Ecosystem"].isin(
-                targets
-            )
-        ]
+        df = df[df["Target Ecosystem"].isin(targets)]
 
     if statuses:
-        df = df[
-            df["Migration Status"].isin(
-                statuses
-            )
-        ]
+        df = df[df["Migration Status"].isin(statuses)]
 
     if build_types:
-        df = df[
-            df["Build Type"].isin(
-                build_types
-            )
-        ]
+        df = df[df["Build Type"].isin(build_types)]
 
     if sprint_number:
-        df = df[
-            df["Sprint"].isin(
-                sprint_number
-            )
-        ]
+        df = df[df["Sprint"].isin(sprint_number)]
 
-    # -----------------------------------------------------
-    # KEEP AVAILABLE COLUMNS ONLY
-    # -----------------------------------------------------
-
+    # -------------------------
+    # KEEP REQUIRED COLUMNS
+    # -------------------------
     available_cols = [
-        c
-        for c in DISPLAY_COLUMNS
-        if c in df.columns
+        c for c in DISPLAY_COLUMNS if c in df.columns
     ]
 
     df = df[available_cols]
 
-    # -----------------------------------------------------
-    # RENAME COLUMN
-    # -----------------------------------------------------
-
+    # Rename for UI clarity
     df = df.rename(
         columns={
             "In Scope(Y/N)": "In Scope?"
@@ -197,10 +118,10 @@ def get_teamcity_inventory_data():
 
     return df
 
-# ---------------------------------------------------------
-# SUNBURST DATA
-# ---------------------------------------------------------
 
+# ---------------------------------------------------
+# SUNBURST DATA
+# ---------------------------------------------------
 def get_teamcity_inventory_sunburst_data():
 
     df = get_teamcity_inventory_data()
@@ -223,10 +144,9 @@ def get_teamcity_inventory_sunburst_data():
         "CI",
     ]
 
-    # -----------------------------------------------------
+    # -------------------------
     # CLEAN ECOSYSTEM
-    # -----------------------------------------------------
-
+    # -------------------------
     df["Current Ecosystem"] = (
         df["Current Ecosystem"]
         .astype(str)
@@ -234,42 +154,26 @@ def get_teamcity_inventory_sunburst_data():
         .str.upper()
     )
 
-    df["Current Ecosystem"] = (
-        df["Current Ecosystem"].replace(
-            {
-                "RISKREPORTING": "RISKREPORTING"
-            }
-        )
-    )
+    df = df[df["Current Ecosystem"] != ""]
+    df = df[df["Current Ecosystem"].notna()]
 
-    df = df[
-        df["Current Ecosystem"] != ""
-    ]
-
-    df = df[
-        df["Current Ecosystem"].notna()
-    ]
-
-    # -----------------------------------------------------
+    # -------------------------
     # CLEAN BUILD TYPE
-    # -----------------------------------------------------
-
+    # -------------------------
     df["Build Type"] = (
         df["Build Type"]
         .astype(str)
         .str.strip()
+        .str.upper()
     )
 
     df = df[
-        df["Build Type"].isin(
-            build_type_order
-        )
+        df["Build Type"].isin(build_type_order)
     ]
 
-    # -----------------------------------------------------
+    # -------------------------
     # CLEAN STATUS
-    # -----------------------------------------------------
-
+    # -------------------------
     df["Migration Status"] = (
         df["Migration Status"]
         .astype(str)
@@ -277,28 +181,23 @@ def get_teamcity_inventory_sunburst_data():
     )
 
     df = df[
-        df["Migration Status"].isin(
-            status_order
-        )
+        df["Migration Status"].isin(status_order)
     ]
 
-    # -----------------------------------------------------
+    # -------------------------
     # KEEP REQUIRED COLUMNS
-    # -----------------------------------------------------
-
+    # -------------------------
     df = df[
         [
-            "Tribe",
             "Current Ecosystem",
             "Build Type",
             "Migration Status",
         ]
     ]
 
-    # -----------------------------------------------------
+    # -------------------------
     # GROUP
-    # -----------------------------------------------------
-
+    # -------------------------
     grouped_df = (
         df.groupby(
             [
@@ -311,27 +210,21 @@ def get_teamcity_inventory_sunburst_data():
         .reset_index(name="Count")
     )
 
-    # -----------------------------------------------------
+    # -------------------------
     # SORT
-    # -----------------------------------------------------
-
+    # -------------------------
     grouped_df = grouped_df.sort_values(
         [
             "Current Ecosystem",
             "Build Type",
             "Count",
         ],
-        ascending=[
-            True,
-            True,
-            False,
-        ],
+        ascending=[True, True, False],
     )
 
-    # -----------------------------------------------------
+    # -------------------------
     # PIVOT
-    # -----------------------------------------------------
-
+    # -------------------------
     pivot_df = grouped_df.pivot_table(
         index=[
             "Current Ecosystem",
@@ -343,51 +236,33 @@ def get_teamcity_inventory_sunburst_data():
         fill_value=0,
     )
 
-    # -----------------------------------------------------
-    # ENSURE ALL STATUS COLUMNS EXIST
-    # -----------------------------------------------------
-
+    # Ensure all status columns exist
     for status in status_order:
-
         if status not in pivot_df.columns:
             pivot_df[status] = 0
 
-    pivot_df = pivot_df[
-        status_order
-    ]
+    pivot_df = pivot_df[status_order]
 
     pivot_df = pivot_df.reset_index()
 
-    return pivot_df.to_dict(
-        orient="records"
-    )
+    return pivot_df.to_dict(orient="records")
 
-# ---------------------------------------------------------
-# ACTIVE BUILDS STACKED BAR DATA
-# ---------------------------------------------------------
 
+# ---------------------------------------------------
+# STACKED BAR CHART
+# ---------------------------------------------------
 def get_teamcity_active_builds_by_type():
-
-    """
-    Returns:
-    Tribe + Build Type + Count
-    Used for stacked bar chart.
-    """
 
     df = get_teamcity_inventory_data()
 
     if df.empty:
         return []
 
-    build_type_order = [
-        "CI",
-        "CD",
-    ]
+    build_type_order = ["CI", "CD"]
 
-    # -----------------------------------------------------
+    # -------------------------
     # CLEAN BUILD TYPE
-    # -----------------------------------------------------
-
+    # -------------------------
     df["Build Type"] = (
         df["Build Type"]
         .astype(str)
@@ -395,16 +270,11 @@ def get_teamcity_active_builds_by_type():
         .str.upper()
     )
 
-    df = df[
-        df["Build Type"].isin(
-            build_type_order
-        )
-    ]
+    df = df[df["Build Type"].isin(build_type_order)]
 
-    # -----------------------------------------------------
+    # -------------------------
     # CLEAN TRIBE
-    # -----------------------------------------------------
-
+    # -------------------------
     df["Tribe"] = (
         df["Tribe"]
         .astype(str)
@@ -413,76 +283,142 @@ def get_teamcity_active_builds_by_type():
     )
 
     df = df[df["Tribe"] != ""]
-
     df = df[df["Tribe"].notna()]
 
-    # -----------------------------------------------------
-    # GROUP DATA
-    # -----------------------------------------------------
-
-    result = (
-        df.groupby(
-            [
-                "Tribe",
-                "Build Type",
-            ]
-        )
+    # -------------------------
+    # GROUP
+    # -------------------------
+    grouped_df = (
+        df.groupby(["Tribe", "Build Type"])
         .size()
         .reset_index(name="Count")
     )
 
-    # -----------------------------------------------------
-    # SORT
-    # -----------------------------------------------------
-
-    result["Build Type"] = (
-        pd.Categorical(
-            result["Build Type"],
-            categories=build_type_order,
-            ordered=True,
-        )
+    # -------------------------
+    # PIVOT
+    # -------------------------
+    pivot_df = grouped_df.pivot_table(
+        index="Tribe",
+        columns="Build Type",
+        values="Count",
+        aggfunc="sum",
+        fill_value=0,
     )
 
-    result = result.sort_values(
-        [
-            "Tribe",
-            "Build Type",
+    # Ensure both columns exist
+    for build_type in build_type_order:
+        if build_type not in pivot_df.columns:
+            pivot_df[build_type] = 0
+
+    pivot_df = pivot_df[build_type_order]
+
+    pivot_df = pivot_df.reset_index()
+
+    return pivot_df.to_dict(orient="records")
+
+# ---------------------------------------------------
+# LINE CHART - BUILD TREND BY TRIBE
+# ---------------------------------------------------
+def get_teamcity_build_trend_by_tribe():
+
+    month_files = {
+        "April": "teamcity_inventory/TeamcityBuildInventory_28-04-2026.csv",
+        "May": "teamcity_inventory/TeamcityBuildInventory_07-05-2026.csv",
+    }
+
+    selected_build_type = request.args.get(
+        "build_type",
+        "All"
+    )
+
+    final_df = pd.DataFrame()
+
+    for month, file_name in month_files.items():
+
+        if not s3_connector.has_file(file_name):
+            continue
+
+        df = s3_connector.read_csv_file(file_name)
+
+        # -----------------------------------------
+        # REMOVE UNNAMED COLUMNS
+        # -----------------------------------------
+        df = df.loc[
+            :,
+            ~df.columns.str.contains(
+                "unnamed",
+                case=False
+            )
         ]
+
+        # -----------------------------------------
+        # CLEAN COLUMN NAMES
+        # -----------------------------------------
+        df.columns = df.columns.str.strip()
+
+        # -----------------------------------------
+        # CLEAN BUILD TYPE
+        # -----------------------------------------
+        df["Build Type"] = (
+            df["Build Type"]
+            .astype(str)
+            .str.strip()
+            .str.upper()
+        )
+
+        # -----------------------------------------
+        # APPLY BUILD TYPE FILTER
+        # -----------------------------------------
+        if selected_build_type.upper() != "ALL":
+
+            df = df[
+                df["Build Type"] ==
+                selected_build_type.upper()
+            ]
+
+        # -----------------------------------------
+        # CLEAN TRIBE
+        # -----------------------------------------
+        df["Tribe"] = (
+            df["Tribe"]
+            .astype(str)
+            .str.strip()
+            .str.upper()
+        )
+
+        df = df[df["Tribe"] != ""]
+        df = df[df["Tribe"].notna()]
+
+        # -----------------------------------------
+        # GROUP DATA
+        # -----------------------------------------
+        grouped_df = (
+            df.groupby("Tribe")
+            .size()
+            .reset_index(name="Count")
+        )
+
+        grouped_df["Month"] = month
+
+        final_df = pd.concat(
+            [final_df, grouped_df],
+            ignore_index=True
+        )
+
+    if final_df.empty:
+        return []
+
+    # -----------------------------------------
+    # PIVOT TABLE
+    # -----------------------------------------
+    pivot_df = final_df.pivot_table(
+        index="Month",
+        columns="Tribe",
+        values="Count",
+        aggfunc="sum",
+        fill_value=0,
     )
 
-    return result.to_dict(
-        orient="records"
-    )
+    pivot_df = pivot_df.reset_index()
 
-# ---------------------------------------------------------
-# MONTHLY TEAMCITY INVENTORY JOB
-# ---------------------------------------------------------
-# This API triggers:
-#
-# 1. Fetch TeamCity inventory
-# 2. Generate CSV
-# 3. Upload CSV to S3
-#
-# Can later be connected to:
-# - Scheduler
-# - Cron Job
-# - Monthly automation
-#
-# SAFE ROLLBACK:
-# If this feature creates deployment/runtime issues,
-# simply comment/remove:
-#
-# from teamcity_inventory_dbd.data_setters.teamcity_data_setter import (
-#     generate_and_upload_inventory,
-# )
-#
-# and comment/remove this function below.
-#
-# Existing dashboards/APIs will still work perfectly.
-# ---------------------------------------------------------
-
-def run_teamcity_inventory_job():
-
-    result = generate_and_upload_inventory()
-
-    return result
+    return pivot_df.to_dict(orient="records")

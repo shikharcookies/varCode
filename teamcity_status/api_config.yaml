@@ -17,3 +17,7 @@ endpoints:
   - path: /teamcity_inventory_report/run_teamcity_inventory_job
     method: post
     function: /apis:teamcity_inventory_reports_apis.run_teamcity_inventory_job
+  
+  - path: /teamcity_inventory_report/get_teamcity_build_trend_by_tribe
+    method: get
+    function: /apis:teamcity_inventory_reports_apis.get_teamcity_build_trend_by_tribe

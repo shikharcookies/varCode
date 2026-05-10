@@ -1,0 +1,53 @@
+info:
+  docString: true
+
+label: TeamCity Build Trend by Tribe
+
+description: |
+  Line chart showing build count trends by tribe across months.
+  Supports All, CI, and CD build filtering.
+
+data:
+  local:
+    source: /teamcity_inventory_report/get_teamcity_build_trend_by_tribe
+
+views:
+  - type: Chart
+    library: echarts
+
+    settings:
+      height: 500px
+      type: line
+
+      x: Month
+
+      y:
+        - CAR
+        - CFM
+        - RIOT
+        - DGT
+        - WRIST
+
+echarts:
+  settings:
+
+    title:
+      text: "Build Trend by Tribe"
+      subtext: "Monthly TeamCity Build Trends"
+
+    tooltip:
+      trigger: axis
+
+    legend:
+      top: 30
+
+    xAxis:
+      type: category
+      name: Month
+
+    yAxis:
+      type: value
+      name: Total Builds
+
+    series:
+      - smooth: true
